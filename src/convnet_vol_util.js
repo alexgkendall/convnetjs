@@ -12,7 +12,7 @@
     if(typeof(fliplr)==='undefined') var fliplr = false;
     if(typeof(dx)==='undefined') var dx = global.randi(0, V.sx - crop);
     if(typeof(dy)==='undefined') var dy = global.randi(0, V.sy - crop);
-    
+
     // randomly sample a crop in the input volume
     var W;
     if(crop !== V.sx || dx!==0 || dy!==0) {
@@ -83,7 +83,7 @@
     var H = img.height;
     var pv = []
     for(var i=0;i<p.length;i++) {
-      pv.push(p[i]/255.0-0.5); // normalize image pixels to [-0.5, 0.5]
+      pv.push(p[i]); // DONT normalize image pixels to [-0.5, 0.5]
     }
     var x = new Vol(W, H, 4, 0.0); //input volume (image)
     x.w = pv;
@@ -98,11 +98,61 @@
       }
       x = x1;
     }
+    else {
+      // remove A channel
+      var x1 = new Vol(W, H, 3, 0.0);
+      for(var i=0;i<W;i++) {
+        for(var j=0;j<H;j++) {
+          for(var d=0;d<3;d++) {
+            x1.set(i,j,d,x.get(i,j,d));
+          }
+        }
+      }
+      x = x1;
+    }
 
     return x;
   }
-  
+
+  // img is a DOM element that contains a loaded image
+  // returns a Vol of size (W, H, 4). 4 is for RGBA
+  var vol_to_img = function(vol, colours, convert_grayscale) {
+
+    if(typeof(convert_grayscale)==='undefined') var convert_grayscale = false;
+
+    // Add alpha channel to image
+    var vol_c = new Vol(vol.sx, vol.sy, 4, 0.0);
+    for(var i=0;i<vol.sx;i++) {
+      for(var j=0;j<vol.sy;j++) {
+        var maxval = -99999;
+        var maxid = -1;
+        for(var d=0;d<vol.depth;d++) {
+          if(vol.get(i,j,d) > maxval) {
+            maxval = vol.get(i,j,d);
+            maxid = d;
+          }
+        }
+        vol_c.set(i,j,0, colours[maxid][0]);
+        vol_c.set(i,j,1, colours[maxid][1]);
+        vol_c.set(i,j,2, colours[maxid][2]);
+        vol_c.set(i,j,3, colours[maxid][3]);
+      }
+    }
+
+    var canvas_col = document.createElement('canvas');
+    canvas_col.width = vol.sx;//img.width;
+    canvas_col.height = vol.sy;//img.height;
+    var ctx = canvas_col.getContext("2d");
+
+    var u = new Uint8ClampedArray(vol_c.w)
+    var img_data = new ImageData(u, canvas_col.width, canvas_col.height)
+    ctx.putImageData(img_data , 0, 0)
+
+    return canvas_col.toDataURL();
+  }
+
   global.augment = augment;
   global.img_to_vol = img_to_vol;
+  global.vol_to_img = vol_to_img;
 
 })(convnetjs);

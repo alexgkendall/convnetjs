@@ -4,8 +4,8 @@
 
   // This file contains all layers that do dot products with input,
   // but usually in a different connectivity pattern and weight sharing
-  // schemes: 
-  // - FullyConn is fully connected dot products 
+  // schemes:
+  // - FullyConn is fully connected dot products
   // - ConvLayer does convolutions (so weight sharing spatially)
   // putting them together in one file because they are very similar
   var ConvLayer = function(opt) {
@@ -17,7 +17,7 @@
     this.in_depth = opt.in_depth;
     this.in_sx = opt.in_sx;
     this.in_sy = opt.in_sy;
-    
+
     // optional
     this.sy = typeof opt.sy !== 'undefined' ? opt.sy : this.sx;
     this.stride = typeof opt.stride !== 'undefined' ? opt.stride : 1; // stride at which we apply filters to input volume
@@ -40,12 +40,30 @@
     this.biases = new Vol(1, 1, this.out_depth, bias);
   }
   ConvLayer.prototype = {
+    set_weights: function(w, b) {
+
+      for(var d=0;d<this.biases.depth;d++) {
+          this.biases.set(0,0,d, b[d]);
+      }
+
+      for(var m=0;m<this.filters.length;m++) {
+        for(var i=0;i<this.filters[m].sx;i++) {
+          for(var j=0;j<this.filters[m].sy;j++) {
+            for(var d=0;d<this.filters[m].depth;d++) {
+                this.filters[m].set(i,j,d, w[m][d][i][j]);
+            }
+          }
+        }
+      }
+    },
+
+
     forward: function(V, is_training) {
       // optimized code by @mdda that achieves 2x speedup over previous version
 
       this.in_act = V;
       var A = new Vol(this.out_sx |0, this.out_sy |0, this.out_depth |0, 0.0);
-      
+
       var V_sx = V.sx |0;
       var V_sy = V.sy |0;
       var xy_stride = this.stride |0;
@@ -177,7 +195,7 @@
     // ok fine we will allow 'filters' as the word as well
     this.out_depth = typeof opt.num_neurons !== 'undefined' ? opt.num_neurons : opt.filters;
 
-    // optional 
+    // optional
     this.l1_decay_mul = typeof opt.l1_decay_mul !== 'undefined' ? opt.l1_decay_mul : 0.0;
     this.l2_decay_mul = typeof opt.l2_decay_mul !== 'undefined' ? opt.l2_decay_mul : 1.0;
 
@@ -214,7 +232,7 @@
     backward: function() {
       var V = this.in_act;
       V.dw = global.zeros(V.w.length); // zero out the gradient in input Vol
-      
+
       // compute gradient wrt weights and data
       for(var i=0;i<this.out_depth;i++) {
         var tfi = this.filters[i];
@@ -271,5 +289,5 @@
 
   global.ConvLayer = ConvLayer;
   global.FullyConnLayer = FullyConnLayer;
-  
+
 })(convnetjs);

@@ -7,10 +7,11 @@
   // For now constraints: Simple linear order of layers, first layer input last layer a cost layer
   var Net = function(options) {
     this.layers = [];
+    this.poolindicies = [];
   }
 
   Net.prototype = {
-    
+
     // takes a list of layer definitions and creates the network layer objects
     makeLayers: function(defs) {
 
@@ -23,7 +24,7 @@
         var new_defs = [];
         for(var i=0;i<defs.length;i++) {
           var def = defs[i];
-          
+
           if(def.type==='softmax' || def.type==='svm') {
             // add an fc layer here, there is no reason the user should
             // have to worry about this and we almost always want to
@@ -36,7 +37,7 @@
             new_defs.push({type:'fc', num_neurons: def.num_neurons});
           }
 
-          if((def.type==='fc' || def.type==='conv') 
+          if((def.type==='fc' || def.type==='conv')
               && typeof(def.bias_pref) === 'undefined'){
             def.bias_pref = 0.0;
             if(typeof def.activation !== 'undefined' && def.activation === 'relu') {
@@ -88,6 +89,7 @@
           case 'regression': this.layers.push(new global.RegressionLayer(def)); break;
           case 'conv': this.layers.push(new global.ConvLayer(def)); break;
           case 'pool': this.layers.push(new global.PoolLayer(def)); break;
+          case 'unpool': this.layers.push(new global.UnPoolLayer(def)); break;
           case 'relu': this.layers.push(new global.ReluLayer(def)); break;
           case 'sigmoid': this.layers.push(new global.SigmoidLayer(def)); break;
           case 'tanh': this.layers.push(new global.TanhLayer(def)); break;
@@ -98,14 +100,30 @@
       }
     },
 
-    // forward prop the network. 
+    // Load pretrained weights
+    load_weights: function(json) {
+
+      console.log("Loading pretrained weights");
+      console.log(json);
+      var count = 0;
+
+      for(var i=0;i<this.layers.length;i++) {
+        if(this.layers[i].layer_type == "conv") {
+          console.log("Loading weight for convolutional layer with size " + this.layers[i].out_depth);
+          this.layers[i].set_weights(json.w[count], json.b[count]);
+          count++;
+        }
+      }
+    },
+
+    // forward prop the network.
     // The trainer class passes is_training = true, but when this function is
     // called from outside (not from the trainer), it defaults to prediction mode
     forward: function(V, is_training) {
       if(typeof(is_training) === 'undefined') is_training = false;
       var act = this.layers[0].forward(V, is_training);
       for(var i=1;i<this.layers.length;i++) {
-        act = this.layers[i].forward(act, is_training);
+        act = this.layers[i].forward(act, is_training, this.poolindicies);
       }
       return act;
     },
@@ -116,7 +134,7 @@
       var loss = this.layers[N-1].backward(y);
       return loss;
     },
-    
+
     // backprop: compute gradients wrt all parameters
     backward: function(y) {
       var N = this.layers.length;
@@ -172,6 +190,7 @@
         if(t==='dropout') { L = new global.DropoutLayer(); }
         if(t==='conv') { L = new global.ConvLayer(); }
         if(t==='pool') { L = new global.PoolLayer(); }
+        if(t==='unpool') { L = new global.UnPoolLayer(); }
         if(t==='lrn') { L = new global.LocalResponseNormalizationLayer(); }
         if(t==='softmax') { L = new global.SoftmaxLayer(); }
         if(t==='regression') { L = new global.RegressionLayer(); }
@@ -183,6 +202,6 @@
       }
     }
   }
-  
+
   global.Net = Net;
 })(convnetjs);

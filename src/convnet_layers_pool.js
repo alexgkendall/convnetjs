@@ -1,7 +1,7 @@
 (function(global) {
   "use strict";
   var Vol = global.Vol; // convenience
-  
+
   var PoolLayer = function(opt) {
 
     var opt = opt || {};
@@ -28,11 +28,11 @@
   }
 
   PoolLayer.prototype = {
-    forward: function(V, is_training) {
+    forward: function(V, is_training, poolindicies) {
       this.in_act = V;
 
       var A = new Vol(this.out_sx, this.out_sy, this.out_depth, 0.0);
-      
+
       var n=0; // a counter for switches
       for(var d=0;d<this.out_depth;d++) {
         var x = -this.pad;
@@ -51,7 +51,7 @@
                 if(oy>=0 && oy<V.sy && ox>=0 && ox<V.sx) {
                   var v = V.get(ox, oy, d);
                   // perform max pooling and store pointers to where
-                  // the max came from. This will speed up backprop 
+                  // the max came from. This will speed up backprop
                   // and can help make nice visualizations in future
                   if(v > a) { a = v; winx=ox; winy=oy;}
                 }
@@ -65,14 +65,15 @@
         }
       }
       this.out_act = A;
+      poolindicies.push({switchx: this.switchx, switchy: this.switchy});
       return this.out_act;
     },
-    backward: function() { 
-      // pooling layers have no parameters, so simply compute 
+    backward: function() {
+      // pooling layers have no parameters, so simply compute
       // gradient wrt data here
       var V = this.in_act;
       V.dw = global.zeros(V.w.length); // zero out gradient wrt data
-      var A = this.out_act; // computed in forward pass 
+      var A = this.out_act; // computed in forward pass
 
       var n = 0;
       for(var d=0;d<this.out_depth;d++) {

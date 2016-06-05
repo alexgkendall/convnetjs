@@ -8,6 +8,7 @@
         <file name="convnet_vol_util.js" />
         <file name="convnet_layers_dotproducts.js" />
         <file name="convnet_layers_pool.js" />
+        <file name="convnet_layers_unpool.js" />
         <file name="convnet_layers_input.js" />
         <file name="convnet_layers_loss.js" />
         <file name="convnet_layers_nonlinearities.js" />
